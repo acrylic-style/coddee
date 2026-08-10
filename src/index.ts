@@ -18,6 +18,8 @@ import { CodexSessionManager } from "./sessionManager.js";
 import { SessionPersistenceStore } from "./sessionPersistenceStore.js";
 import { prependReminderInstructions } from "./reminderProtocol.js";
 import { ReminderStore } from "./reminderStore.js";
+import { DiscordVoiceController } from "./voice/discordVoiceController.js";
+import { VoiceMemoryStore } from "./voice/voiceMemoryStore.js";
 
 function startTypingIndicator(sendTyping: () => Promise<unknown>): () => void {
   let stopped = false;
@@ -69,15 +71,79 @@ async function main(): Promise<void> {
   );
   const reminderStore = new ReminderStore("data/reminders.json");
   await reminderStore.load();
+  const voiceMemoryStore = new VoiceMemoryStore("data/voice-memory.json");
+  await voiceMemoryStore.load();
 
   const client = new Client({
     intents: [
       GatewayIntentBits.Guilds,
       GatewayIntentBits.GuildMessages,
+      GatewayIntentBits.GuildVoiceStates,
       GatewayIntentBits.MessageContent,
       GatewayIntentBits.DirectMessages,
     ],
     partials: [Partials.Channel],
+  });
+  let voiceController: DiscordVoiceController | null = null;
+  if (config.openAiApiKey) {
+    const voiceReadStore = new SessionPersistenceStore(
+      "data/voice-read-session-state.json",
+    );
+    const voiceWriteStore = new SessionPersistenceStore(
+      "data/voice-write-session-state.json",
+    );
+    const [voiceReadPersisted, voiceWritePersisted] = await Promise.all([
+      voiceReadStore.load(),
+      voiceWriteStore.load(),
+    ]);
+    const voiceReadSessions = new CodexSessionManager(
+      new CodexSdkRuntimeAdapter({
+        logger,
+        progressSummarizer,
+        executionMode: "read-only",
+      }),
+      config.codexWorkdir,
+      voiceReadStore,
+      voiceReadPersisted,
+    );
+    const voiceWriteSessions = new CodexSessionManager(
+      new CodexSdkRuntimeAdapter({
+        logger,
+        progressSummarizer,
+        executionMode: "write-enabled",
+      }),
+      config.codexWorkdir,
+      voiceWriteStore,
+      voiceWritePersisted,
+    );
+    voiceController = new DiscordVoiceController({
+      client,
+      apiKey: config.openAiApiKey,
+      realtimeSessionModel: config.realtimeSessionModel,
+      transcriptionModel: config.realtimeTranscriptionModel,
+      conversationModel: config.voiceConversationModel,
+      voicevoxBaseUrl: config.voicevoxBaseUrl,
+      voicevoxSpeakerId: config.voicevoxSpeakerId,
+      allowedUserIds: config.allowedDiscordUserIds,
+      readSessions: voiceReadSessions,
+      writeSessions: voiceWriteSessions,
+      memoryStore: voiceMemoryStore,
+      logger,
+    });
+  }
+
+  client.on("interactionCreate", async (interaction) => {
+    if (!interaction.isButton() || !voiceController) {
+      return;
+    }
+    try {
+      await voiceController.handleInteraction(interaction);
+    } catch (error) {
+      logger.error("Failed to handle voice approval interaction", {
+        userId: interaction.user.id,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    }
   });
 
   client.once("clientReady", () => {
@@ -134,7 +200,11 @@ async function main(): Promise<void> {
       return;
     }
 
-    if (!message.mentions.users.has(client.user.id)) {
+    const mentionsBot = message.mentions.users.has(client.user.id);
+    if (!mentionsBot) {
+      if (voiceController && (await voiceController.handleTextInput(message))) {
+        return;
+      }
       return;
     }
 
@@ -157,6 +227,49 @@ async function main(): Promise<void> {
     const normalized = content.trim();
     const lower = normalized.toLowerCase();
 
+    if (
+      lower === "voice character" ||
+      lower.startsWith("voice character ") ||
+      lower === "voice memory" ||
+      lower.startsWith("voice memory ")
+    ) {
+      if (!voiceController) {
+        await message.reply("ボイス機能には OPENAI_API_KEY の設定が必要です。");
+        return;
+      }
+      const result = await voiceController.handleManagementCommand(
+        message,
+        normalized,
+      );
+      await message.reply(
+        result ?? "ボイスmemoryコマンドを解釈できませんでした。",
+      );
+      return;
+    }
+
+    if (lower === "voice join") {
+      if (!voiceController) {
+        await message.reply("ボイス機能には OPENAI_API_KEY の設定が必要です。");
+        return;
+      }
+      await message.reply(await voiceController.join(message));
+      return;
+    }
+
+    if (lower === "voice leave") {
+      if (!message.guild || !voiceController) {
+        await message.reply("現在ボイスチャンネルには接続していません。");
+        return;
+      }
+      const left = await voiceController.leave(message.guild.id);
+      await message.reply(
+        left
+          ? "ボイスチャンネルから退出しました。"
+          : "現在ボイスチャンネルには接続していません。",
+      );
+      return;
+    }
+
     if (lower === "reset") {
       await sessions.resetSession(sessionKey);
       await message.reply(
@@ -175,6 +288,10 @@ async function main(): Promise<void> {
           `workdir: ${status.workdir}`,
         ].join("\n"),
       );
+      return;
+    }
+
+    if (voiceController && (await voiceController.handleTextInput(message))) {
       return;
     }
 

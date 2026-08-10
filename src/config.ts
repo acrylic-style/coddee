@@ -14,6 +14,11 @@ export interface AppConfig {
   reminderTimeZone: string;
   openAiApiKey?: string;
   progressSummaryModel: string;
+  realtimeSessionModel: string;
+  realtimeTranscriptionModel: string;
+  voiceConversationModel: string;
+  voicevoxBaseUrl: string;
+  voicevoxSpeakerId: number;
 }
 
 function getRequiredEnv(name: string): string {
@@ -45,6 +50,21 @@ function parseLogLevel(value: string | undefined): LogLevel {
   }
 }
 
+function parseNonNegativeInteger(
+  value: string | undefined,
+  fallback: number,
+  name: string,
+): number {
+  if (!value?.trim()) {
+    return fallback;
+  }
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`Invalid ${name}: ${value}`);
+  }
+  return parsed;
+}
+
 export function loadConfig(): AppConfig {
   const codexWorkdir = path.resolve(getRequiredEnv("CODEX_WORKDIR"));
   const reminderTimeZone =
@@ -71,5 +91,18 @@ export function loadConfig(): AppConfig {
     openAiApiKey: process.env.OPENAI_API_KEY?.trim() || undefined,
     progressSummaryModel:
       process.env.PROGRESS_SUMMARY_MODEL?.trim() || "gpt-5.6-luna",
+    realtimeSessionModel:
+      process.env.REALTIME_SESSION_MODEL?.trim() || "gpt-realtime-2.1-mini",
+    realtimeTranscriptionModel:
+      process.env.REALTIME_TRANSCRIPTION_MODEL?.trim() || "gpt-live-transcribe",
+    voiceConversationModel:
+      process.env.VOICE_CONVERSATION_MODEL?.trim() || "gpt-5.6-luna",
+    voicevoxBaseUrl:
+      process.env.VOICEVOX_BASE_URL?.trim() || "http://127.0.0.1:50021",
+    voicevoxSpeakerId: parseNonNegativeInteger(
+      process.env.VOICEVOX_SPEAKER_ID,
+      3,
+      "VOICEVOX_SPEAKER_ID",
+    ),
   };
 }

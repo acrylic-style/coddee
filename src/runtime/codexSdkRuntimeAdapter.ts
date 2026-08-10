@@ -22,6 +22,7 @@ import { extractToolOutputImages } from "../toolOutputImages.js";
 interface RuntimeOptions {
   logger: Logger;
   progressSummarizer?: ProgressSummarizer;
+  executionMode?: "unrestricted" | "read-only" | "write-enabled";
 }
 
 interface InternalSession {
@@ -35,10 +36,12 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
   private readonly logger: Logger;
   private readonly codex: Codex;
   private readonly progressSummarizer?: ProgressSummarizer;
+  private readonly executionMode: NonNullable<RuntimeOptions["executionMode"]>;
 
   constructor(options: RuntimeOptions) {
     this.logger = options.logger;
     this.progressSummarizer = options.progressSummarizer;
+    this.executionMode = options.executionMode ?? "unrestricted";
     this.codex = new Codex();
   }
 
@@ -50,7 +53,13 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
       workingDirectory: workdir,
       skipGitRepoCheck: true,
       approvalPolicy: "never" as const,
-      sandboxMode: "danger-full-access" as const,
+      sandboxMode:
+        this.executionMode === "read-only"
+          ? ("read-only" as const)
+          : this.executionMode === "write-enabled"
+            ? ("workspace-write" as const)
+            : ("danger-full-access" as const),
+      networkAccessEnabled: this.executionMode === "unrestricted",
     };
     const thread = persistedThreadId
       ? this.codex.resumeThread(persistedThreadId, threadOptions)
