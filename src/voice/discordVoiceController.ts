@@ -35,6 +35,7 @@ import {
   type VoiceConversationResult,
 } from "./voiceConversationService.js";
 import { VoicevoxClient, splitSpeechText } from "./voicevoxClient.js";
+import { attachReplyFiles } from "../replyFiles.js";
 import { VoiceMemoryStore } from "./voiceMemoryStore.js";
 import { shouldHandleVoiceTranscript } from "./wakeWord.js";
 import {
@@ -64,6 +65,7 @@ interface DiscordVoiceControllerOptions {
   transcriptionModel: string;
   conversationModel: string;
   voicevoxBaseUrl: string;
+  workdir: string;
   voicevoxSpeakerId: number;
   allowedUserIds: Set<string>;
   readSessions: CodexSessionManager;
@@ -613,8 +615,10 @@ export class DiscordVoiceController {
           requestedAt: Date.now(),
         },
       );
+      const reply = await attachReplyFiles(result.text, this.options.workdir);
       await interaction.followUp({
-        content: result.text.slice(0, 2_000) || "Codex の実行が完了しました。",
+        content: reply.text.slice(0, 2_000) || "Codex の実行が完了しました。",
+        files: reply.files,
         allowedMentions: { parse: [] },
       });
       const state = this.guilds.get(proposal.guildId);
@@ -652,7 +656,8 @@ export class DiscordVoiceController {
     channelId: string,
     result: VoiceConversationResult,
   ): Promise<void> {
-    if (result.sources.length === 0) {
+    const reply = await attachReplyFiles(result.text, this.options.workdir);
+    if (result.sources.length === 0 && reply.text === result.text) {
       return;
     }
     const sources = result.sources
@@ -661,14 +666,22 @@ export class DiscordVoiceController {
       .join("\n");
     await this.publishText(
       channelId,
-      `${result.text.slice(0, 1_400)}\n\n出典:\n${sources}`.slice(0, 2_000),
+      (sources
+        ? `${reply.text.slice(0, 1_400)}\n\n出典:\n${sources}`
+        : reply.text
+      ).slice(0, 2_000),
+      reply.files,
     );
   }
 
-  private async publishText(channelId: string, content: string): Promise<void> {
+  private async publishText(
+    channelId: string,
+    content: string,
+    files?: { attachment: Buffer; name: string }[],
+  ): Promise<void> {
     const channel = await this.options.client.channels.fetch(channelId);
     if (channel?.isTextBased() && "send" in channel) {
-      await channel.send({ content, allowedMentions: { parse: [] } });
+      await channel.send({ content, files, allowedMentions: { parse: [] } });
     }
   }
 

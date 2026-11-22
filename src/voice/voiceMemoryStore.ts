@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { ConversationMemory } from "../conversationMemory.js";
 
 export interface VoiceMemoryTurn {
   id: string;
@@ -38,7 +39,10 @@ export class VoiceMemoryStore {
   private records: PersistedVoiceMemories = {};
   private saveQueue: Promise<void> = Promise.resolve();
 
-  constructor(private readonly filePath: string) {}
+  constructor(
+    private readonly filePath: string,
+    readonly tree?: ConversationMemory,
+  ) {}
 
   async load(): Promise<void> {
     try {
@@ -54,10 +58,11 @@ export class VoiceMemoryStore {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") {
         this.records = {};
-        return;
+      } else {
+        throw error;
       }
-      throw error;
     }
+    await this.tree?.seedVoice(this.records);
   }
 
   get(key: string): VoiceMemoryRecord {
@@ -85,6 +90,7 @@ export class VoiceMemoryStore {
     });
     record.updatedAt = Date.now();
     await this.save();
+    await this.tree?.remember(key, turn.userText, turn.assistantText);
   }
 
   getSummarySnapshot(key: string): VoiceMemorySummarySnapshot {
@@ -123,6 +129,7 @@ export class VoiceMemoryStore {
   }
 
   async resetMemory(key: string): Promise<void> {
+    await this.tree?.clear(key);
     const record = this.ensureRecord(key);
     record.memorySummary = "";
     record.recentTurns = [];

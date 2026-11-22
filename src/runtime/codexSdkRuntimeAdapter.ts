@@ -7,6 +7,7 @@ import {
 import type { Logger } from "../logger.js";
 import type {
   CodexInput,
+  CodexApproval,
   CodexProgressCallback,
   CodexRuntimeAdapter,
   CodexStatusResult,
@@ -18,6 +19,7 @@ import { REMINDER_OUTPUT_SCHEMA } from "../reminderProtocol.js";
 import { sanitizeCommandForSummary } from "../commandSanitizer.js";
 import { ProgressSummaryScheduler } from "../progressSummaryScheduler.js";
 import { extractToolOutputImages } from "../toolOutputImages.js";
+import { appServerTurn } from "./appServerTurn.js";
 
 interface RuntimeOptions {
   logger: Logger;
@@ -29,6 +31,7 @@ interface InternalSession {
   runtimeSessionId: string;
   thread: Thread;
   persistedThreadId: string | null;
+  workdir: string;
 }
 
 export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
@@ -69,6 +72,7 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
     this.sessions.set(sessionId, {
       runtimeSessionId: sessionId,
       thread,
+      workdir,
       persistedThreadId: persistedThreadId ?? thread.id ?? null,
     });
 
@@ -87,11 +91,21 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
     sessionId: string,
     input: CodexInput,
     onProgress?: CodexProgressCallback,
+    approve?: CodexApproval,
   ): Promise<CodexTurnResult> {
     const session = this.getSession(sessionId);
-    const { events } = await session.thread.runStreamed(input, {
-      outputSchema: REMINDER_OUTPUT_SCHEMA,
-    });
+    const events = approve
+      ? appServerTurn(
+          session.workdir,
+          session.persistedThreadId,
+          input,
+          approve,
+        )
+      : (
+          await session.thread.runStreamed(input, {
+            outputSchema: REMINDER_OUTPUT_SCHEMA,
+          })
+        ).events;
     const items: ThreadItem[] = [];
     let finalResponse = "";
     const progressScheduler = onProgress
@@ -105,6 +119,9 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
 
     try {
       for await (const event of events) {
+        if (event.type === "thread.started") {
+          session.persistedThreadId = event.thread_id;
+        }
         if (event.type === "turn.failed") {
           throw new Error(event.error.message);
         }

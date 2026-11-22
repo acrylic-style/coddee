@@ -160,9 +160,10 @@ export class CodexSessionManager {
           state.sessionId,
           turn.input,
           onProgress,
+          turn.approve,
         );
       } catch (error) {
-        if (!startedFromPersistedThread) {
+        if (!startedFromPersistedThread || turn.approve) {
           throw error;
         }
 
@@ -180,6 +181,7 @@ export class CodexSessionManager {
           state.sessionId,
           turn.input,
           onProgress,
+          turn.approve,
         );
       }
 

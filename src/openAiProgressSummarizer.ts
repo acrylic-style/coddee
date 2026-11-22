@@ -79,7 +79,7 @@ export class OpenAiProgressSummarizer implements ProgressSummarizer {
         }),
         tools: [],
         tool_choice: "none",
-        reasoning: { effort: "none" },
+        reasoning: { effort: "low" },
         text: { verbosity: "low" },
         max_output_tokens: 80,
         store: false,

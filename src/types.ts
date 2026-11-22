@@ -9,12 +9,14 @@ export type CodexUserInput =
     };
 
 export type CodexInput = string | CodexUserInput[];
+export type CodexApproval = (operation: string) => Promise<boolean>;
 
 export interface TurnRequest {
   messageId: string;
   channelId: string;
   input: CodexInput;
   requestedAt: number;
+  approve?: CodexApproval;
 }
 
 export interface SessionState {
@@ -76,6 +78,7 @@ export interface CodexRuntimeAdapter {
     sessionId: string,
     input: CodexInput,
     onProgress?: CodexProgressCallback,
+    approve?: CodexApproval,
   ): Promise<CodexTurnResult>;
   getPersistentThreadId(sessionId: string): string | null;
   getStatus(sessionId: string): Promise<CodexStatusResult>;
