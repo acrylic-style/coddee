@@ -10,6 +10,7 @@ export type CodexUserInput =
 
 export type CodexInput = string | CodexUserInput[];
 export type CodexApproval = (operation: string) => Promise<boolean>;
+export type ProtectedFetch = (url: string) => Promise<string>;
 
 export interface TurnRequest {
   messageId: string;
@@ -17,6 +18,7 @@ export interface TurnRequest {
   input: CodexInput;
   requestedAt: number;
   approve?: CodexApproval;
+  protectedFetch?: ProtectedFetch;
 }
 
 export interface SessionState {
@@ -79,6 +81,7 @@ export interface CodexRuntimeAdapter {
     input: CodexInput,
     onProgress?: CodexProgressCallback,
     approve?: CodexApproval,
+    protectedFetch?: ProtectedFetch,
   ): Promise<CodexTurnResult>;
   getPersistentThreadId(sessionId: string): string | null;
   getStatus(sessionId: string): Promise<CodexStatusResult>;

@@ -161,9 +161,14 @@ export class CodexSessionManager {
           turn.input,
           onProgress,
           turn.approve,
+          turn.protectedFetch,
         );
       } catch (error) {
-        if (!startedFromPersistedThread || turn.approve) {
+        if (
+          !startedFromPersistedThread ||
+          turn.approve ||
+          turn.protectedFetch
+        ) {
           throw error;
         }
 
@@ -182,6 +187,7 @@ export class CodexSessionManager {
           turn.input,
           onProgress,
           turn.approve,
+          turn.protectedFetch,
         );
       }
 

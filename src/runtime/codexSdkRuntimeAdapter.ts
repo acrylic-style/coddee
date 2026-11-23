@@ -8,6 +8,7 @@ import type { Logger } from "../logger.js";
 import type {
   CodexInput,
   CodexApproval,
+  ProtectedFetch,
   CodexProgressCallback,
   CodexRuntimeAdapter,
   CodexStatusResult,
@@ -92,20 +93,23 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
     input: CodexInput,
     onProgress?: CodexProgressCallback,
     approve?: CodexApproval,
+    protectedFetch?: ProtectedFetch,
   ): Promise<CodexTurnResult> {
     const session = this.getSession(sessionId);
-    const events = approve
-      ? appServerTurn(
-          session.workdir,
-          session.persistedThreadId,
-          input,
-          approve,
-        )
-      : (
-          await session.thread.runStreamed(input, {
-            outputSchema: REMINDER_OUTPUT_SCHEMA,
-          })
-        ).events;
+    const events =
+      approve || protectedFetch
+        ? appServerTurn(
+            session.workdir,
+            session.persistedThreadId,
+            input,
+            approve,
+            protectedFetch,
+          )
+        : (
+            await session.thread.runStreamed(input, {
+              outputSchema: REMINDER_OUTPUT_SCHEMA,
+            })
+          ).events;
     const items: ThreadItem[] = [];
     let finalResponse = "";
     const progressScheduler = onProgress

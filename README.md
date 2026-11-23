@@ -51,3 +51,9 @@
 通常テキストとVCでは、会話の要点候補と詳細を `data/conversation-memory.json` に保存します。関連候補は最大4件です。Bot宛ての `memory search <検索語>` と `memory open <ID>` で要約から詳細・子ノードへたどれます。
 
 既定では保存元チャンネル内だけを検索します。`CONVERSATION_MEMORY_SCOPE=global` に設定して再起動すると、許可ユーザーがすべてのチャンネルの記憶を検索・閲覧でき、別チャンネルでの応答にも使われます。
+
+# Cloudflare Access のサイト取得
+
+`.env` の `CF_SERVICE_TOKENS` にホスト名とサービス​​トークンを設定すると、許可ユーザーが `@Bot fetch https://example.domain/path` で取得できます。取得結果は依頼者にDMで送ります。HTTPSの登録ホストにだけ認証ヘッダーを付け、リダイレクトは追跡しません。
+
+通常のCodexテキスト依頼でも「https://example.domain/path を読んで要約して」のように指定できます。取得結果はDM、Codexの回答は依頼元チャンネルに届きます。HTMLは `CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN`（Browser Run - Edit）を使用してBrowser Runへ送信し、Markdownに変換します。取得HTMLは最大512 KiB、変換結果は先頭8 KiBです。

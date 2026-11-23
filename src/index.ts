@@ -28,6 +28,7 @@ import { ReminderStore } from "./reminderStore.js";
 import { DiscordVoiceController } from "./voice/discordVoiceController.js";
 import { VoiceMemoryStore } from "./voice/voiceMemoryStore.js";
 import { attachReplyFiles } from "./replyFiles.js";
+import { createCloudflareAccessFetch } from "./cloudflareAccessFetch.js";
 import { ConversationMemory } from "./conversationMemory.js";
 
 function startTypingIndicator(sendTyping: () => Promise<unknown>): () => void {
@@ -94,6 +95,14 @@ async function main(): Promise<void> {
     await textReadStore.load(),
   );
   await reminderStore.load();
+  const accessFetch = createCloudflareAccessFetch(
+    process.env.CF_SERVICE_TOKENS,
+    process.env.CLOUDFLARE_ACCOUNT_ID?.trim(),
+    process.env.CLOUDFLARE_API_TOKEN?.trim(),
+  );
+  const protectedFetchEnabled = Boolean(process.env.CF_SERVICE_TOKENS?.trim());
+  delete process.env.CF_SERVICE_TOKENS;
+  delete process.env.CLOUDFLARE_API_TOKEN;
   const memory = new ConversationMemory(
     "data/conversation-memory.json",
     process.env.CONVERSATION_MEMORY_SCOPE === "global",
@@ -240,7 +249,9 @@ async function main(): Promise<void> {
       return;
     }
 
-    const sessionKey = message.channelId;
+    const sessionKey = protectedFetchEnabled
+      ? `protected-fetch:${message.channelId}`
+      : message.channelId;
 
     if (!config.allowedDiscordUserIds.has(message.author.id)) {
       await message.reply("この Bot の利用は許可ユーザーに限定されています。");
@@ -258,6 +269,25 @@ async function main(): Promise<void> {
 
     const normalized = content.trim();
     const lower = normalized.toLowerCase();
+    if (lower.startsWith("fetch ")) {
+      try {
+        const body = await accessFetch(normalized.slice(6).trim());
+        await message.author.send({
+          files: [
+            {
+              attachment: Buffer.from(body || "応答本文は空でした。", "utf8"),
+              name: "page.md",
+            },
+          ],
+        });
+        if (message.guild) await message.reply("取得結果をDMに送りました。");
+      } catch {
+        await message.reply(
+          "取得またはDM送信に失敗しました。登録ホスト、Access設定、DM受信設定をご確認ください。",
+        );
+      }
+      return;
+    }
     const memoryScope =
       message.channel?.isVoiceBased() && message.guild
         ? `voice-conversation:${message.guild.id}:${message.channelId}`
@@ -443,6 +473,34 @@ async function main(): Promise<void> {
           input: inputWithReminders,
           requestedAt: startedAt,
           approve: readOnly ? undefined : approve,
+          protectedFetch: protectedFetchEnabled
+            ? async (url) => {
+                const requestedUrls =
+                  prompt.match(/https:\/\/[^\s<>`"']+/gu) ?? [];
+                if (
+                  !requestedUrls.some(
+                    (value) =>
+                      value === url ||
+                      value.replace(/[)\]、。,.]+$/u, "") === url,
+                  )
+                ) {
+                  throw new Error("依頼本文にあるURLを指定してください。");
+                }
+                const text = await accessFetch(url);
+                await message.author.send({
+                  files: [
+                    {
+                      attachment: Buffer.from(
+                        text || "応答本文は空でした。",
+                        "utf8",
+                      ),
+                      name: "page.md",
+                    },
+                  ],
+                });
+                return text;
+              }
+            : undefined,
         },
         async (progress) => {
           try {
