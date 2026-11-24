@@ -6,7 +6,7 @@ import {
   GatewayIntentBits,
   Partials,
 } from "discord.js";
-import { createCodexInput, isImageAttachment } from "./attachmentUtils.js";
+import { createCodexInput } from "./attachmentUtils.js";
 import { loadConfig } from "./config.js";
 import {
   buildHelpMessage,
@@ -260,9 +260,9 @@ async function main(): Promise<void> {
 
     const content = stripBotMention(message.content, client.user.id);
     const attachments = [...message.attachments.values()];
-    const hasImageAttachment = attachments.some(isImageAttachment);
+    const hasAttachments = attachments.length > 0;
 
-    if (!content && !hasImageAttachment) {
+    if (!content && !hasAttachments) {
       await message.reply(buildHelpMessage());
       return;
     }
@@ -380,7 +380,7 @@ async function main(): Promise<void> {
     const prompt = readOnly
       ? normalized.replace(/^read:\s*/iu, "")
       : normalized;
-    if (!prompt && !hasImageAttachment) {
+    if (!prompt && !hasAttachments) {
       await message.reply(buildHelpMessage());
       return;
     }

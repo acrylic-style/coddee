@@ -1,4 +1,6 @@
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { pipeline } from "node:stream/promises";
+import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
@@ -34,8 +36,7 @@ export async function createCodexInput(
   cleanup: () => Promise<void>;
   imageCount: number;
 }> {
-  const imageAttachments = attachments.filter(isImageAttachment);
-  if (imageAttachments.length === 0) {
+  if (attachments.length === 0) {
     return {
       input: prompt,
       cleanup: async () => {},
@@ -46,37 +47,46 @@ export async function createCodexInput(
   const tempDirectory = await mkdtemp(
     path.join(tmpdir(), "discord-codex-bot-"),
   );
-  const inputs: CodexUserInput[] = [];
+  const images: CodexUserInput[] = [];
+  const filePaths: string[] = [];
 
-  const text = prompt.trim() || "添付画像を分析してください。";
-  inputs.push({
-    type: "text",
-    text,
-  });
+  try {
+    for (const attachment of attachments) {
+      const response = await fetch(attachment.url);
+      if (!response.ok || !response.body) {
+        throw new Error(
+          `Failed to download attachment: ${attachment.name} (${response.status})`,
+        );
+      }
 
-  for (const attachment of imageAttachments) {
-    const response = await fetch(attachment.url);
-    if (!response.ok) {
-      throw new Error(
-        `Failed to download attachment: ${attachment.url} (${response.status})`,
-      );
+      const filename = `${randomUUID()}-${sanitizeFilename(attachment.name)}`;
+      const filePath = path.join(tempDirectory, filename);
+      await pipeline(response.body, createWriteStream(filePath));
+
+      if (isImageAttachment(attachment)) {
+        images.push({ type: "local_image", path: filePath });
+      } else {
+        filePaths.push(filePath);
+      }
     }
-
-    const arrayBuffer = await response.arrayBuffer();
-    const filename = `${randomUUID()}-${sanitizeFilename(attachment.name)}`;
-    const filePath = path.join(tempDirectory, filename);
-    await writeFile(filePath, Buffer.from(arrayBuffer));
-    inputs.push({
-      type: "local_image",
-      path: filePath,
-    });
+  } catch (error) {
+    await rm(tempDirectory, { recursive: true, force: true });
+    throw error;
   }
 
+  const defaultPrompt = filePaths.length
+    ? "添付ファイルを確認してください。"
+    : "添付画像を分析してください。";
+  const text = prompt.trim() || defaultPrompt;
+  const inputText = filePaths.length
+    ? `${text}\n\n添付ファイルのローカルパス:\n${filePaths.join("\n")}`
+    : text;
+
   return {
-    input: inputs,
+    input: [{ type: "text", text: inputText }, ...images],
     cleanup: async () => {
       await rm(tempDirectory, { recursive: true, force: true });
     },
-    imageCount: imageAttachments.length,
+    imageCount: images.length,
   };
 }
