@@ -12,9 +12,9 @@ describe("getUserFacingProgressText", () => {
       getUserFacingProgressText({
         id: "message-1",
         type: "agent_message",
-        text: "  関連箇所を確認していますわ。  ",
+        text: "  関連箇所を確認しています。  ",
       }),
-    ).toBe("関連箇所を確認していますわ。");
+    ).toBe("関連箇所を確認しています。");
   });
 
   it("does not relay structured final responses", () => {
@@ -23,7 +23,7 @@ describe("getUserFacingProgressText", () => {
         id: "message-1",
         type: "agent_message",
         text: JSON.stringify({
-          reply: "完了しましたわ。",
+          reply: "完了しました。",
           reminderActions: [],
           includeToolImages: false,
         }),
@@ -48,7 +48,7 @@ describe("getUserFacingProgressText", () => {
 describe("summarizeProgressEvent", () => {
   it("starts every turn with a safe fixed message", () => {
     expect(summarizeProgressEvent({ type: "turn.started" })).toBe(
-      "ご依頼内容を確認していますわ…",
+      "依頼内容を確認しています…",
     );
   });
 
@@ -64,7 +64,7 @@ describe("summarizeProgressEvent", () => {
       },
     });
 
-    expect(summary).toBe("ripgrepで関連箇所を検索していますわ…");
+    expect(summary).toBe("ripgrepで関連箇所を検索しています…");
     expect(summary).not.toContain("super-secret-token");
     expect(summary).not.toContain("private");
   });
@@ -81,7 +81,7 @@ describe("summarizeProgressEvent", () => {
           status: "in_progress",
         },
       }),
-    ).toBe("コマンドで必要な処理を進めていますわ…");
+    ).toBe("コマンドで必要な処理を進めています…");
   });
 
   it("preserves an SSH operation but removes its destination from model metadata", () => {
@@ -117,7 +117,7 @@ describe("summarizeProgressEvent", () => {
       },
     });
 
-    expect(summary).toBe("外部ツールで必要な情報を確認していますわ…");
+    expect(summary).toBe("外部ツールで必要な情報を確認しています…");
     expect(summary).not.toContain("private-server");
     expect(summary).not.toContain("sensitive-value");
   });

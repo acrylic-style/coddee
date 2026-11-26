@@ -52,7 +52,7 @@ export class OpenAiProgressSummarizer implements ProgressSummarizer {
     const recentEvents = events.slice(-MAX_RECENT_EVENTS);
     const latestEvent = recentEvents.at(-1);
     if (!latestEvent) {
-      return "ご依頼内容を確認していますわ…";
+      return "依頼内容を確認しています…";
     }
     if (latestEvent.directText || !this.client) {
       return latestEvent.directText ?? latestEvent.fallbackText;
@@ -63,7 +63,6 @@ export class OpenAiProgressSummarizer implements ProgressSummarizer {
         model: this.model,
         instructions: [
           "You write one short Japanese progress update for a Discord user.",
-          "Use an elegant polite feminine tone ending naturally with ですわ, ますわ, or ですの.",
           "Summarize the supplied recent events in chronological order, emphasizing the current work and meaningful progress.",
           "Command summaries were sanitized locally: use their safe operational details, but never infer, reconstruct, or expose anything represented by <redacted>, <destination>, <host>, <path>, or <url>.",
           "Never mention credentials, secrets, hidden targets, private paths, IDs, raw output, or reasoning.",

@@ -12,7 +12,7 @@ const commandEvent: SafeProgressEvent = {
   stage: "in_progress",
   commandName: "ripgrep",
   commandSummary: "rg -n ProgressSummarizer src tests",
-  fallbackText: "ripgrepで関連箇所を検索していますわ…",
+  fallbackText: "ripgrepで関連箇所を検索しています…",
 };
 
 function fakeClient(outputText: string): {
@@ -29,7 +29,7 @@ function fakeClient(outputText: string): {
 describe("OpenAiProgressSummarizer", () => {
   it("sends the supplied sanitized event history to the model", async () => {
     const { client, create } = fakeClient(
-      "ripgrepを用いて関連箇所を確認していますわ。",
+      "ripgrepを用いて関連箇所を確認しています。",
     );
     const summarizer = new OpenAiProgressSummarizer({
       model: "test-model",
@@ -42,11 +42,11 @@ describe("OpenAiProgressSummarizer", () => {
         {
           kind: "turn",
           stage: "started",
-          fallbackText: "ご依頼内容を確認していますわ…",
+          fallbackText: "依頼内容を確認しています…",
         },
         commandEvent,
       ]),
-    ).resolves.toBe("ripgrepを用いて関連箇所を確認していますわ。");
+    ).resolves.toBe("ripgrepを用いて関連箇所を確認しています。");
     expect(create).toHaveBeenCalledOnce();
     const request = create.mock.calls[0]?.[0] as {
       input: string;
@@ -75,7 +75,7 @@ describe("OpenAiProgressSummarizer", () => {
 
   it("falls back when model output may contain sensitive details", async () => {
     const { client } = fakeClient(
-      "C:\\Users\\someone\\secret.txtを確認していますわ。",
+      "C:\\Users\\someone\\secret.txtを確認しています。",
     );
     const summarizer = new OpenAiProgressSummarizer({
       model: "test-model",
@@ -100,7 +100,7 @@ describe("OpenAiProgressSummarizer", () => {
   });
 
   it("does not throttle consecutive requests", async () => {
-    const { client, create } = fakeClient("処理を確認していますわ。");
+    const { client, create } = fakeClient("処理を確認しています。");
     const summarizer = new OpenAiProgressSummarizer({
       model: "test-model",
       logger: new Logger("error"),
@@ -113,14 +113,14 @@ describe("OpenAiProgressSummarizer", () => {
       {
         kind: "web_search",
         stage: "started",
-        fallbackText: "Web検索で情報を確認していますわ…",
+        fallbackText: "Web検索で情報を確認しています…",
       },
     ]);
     expect(create).toHaveBeenCalledTimes(2);
   });
 
   it("limits model input to the fifteen most recent events", async () => {
-    const { client, create } = fakeClient("直近の作業をまとめていますわ。");
+    const { client, create } = fakeClient("直近の作業をまとめています。");
     const summarizer = new OpenAiProgressSummarizer({
       model: "test-model",
       logger: new Logger("error"),
@@ -145,17 +145,17 @@ describe("OpenAiProgressSummarizer", () => {
 
 describe("validateModelSummary", () => {
   it("normalizes a short safe sentence", () => {
-    expect(validateModelSummary("  結果を\n確認していますわ。 ")).toBe(
-      "結果を 確認していますわ。",
+    expect(validateModelSummary("  結果を\n確認しています。 ")).toBe(
+      "結果を 確認しています。",
     );
   });
 
   it("rejects URLs, IP addresses, paths, and mass mentions", () => {
     expect(
-      validateModelSummary("https://example.comを確認中ですわ。"),
+      validateModelSummary("https://example.comを確認中です。"),
     ).toBeNull();
-    expect(validateModelSummary("192.168.0.1を確認中ですわ。")).toBeNull();
-    expect(validateModelSummary("/home/user/fileを確認中ですわ。")).toBeNull();
-    expect(validateModelSummary("@everyone 確認中ですわ。")).toBeNull();
+    expect(validateModelSummary("192.168.0.1を確認中です。")).toBeNull();
+    expect(validateModelSummary("/home/user/fileを確認中です。")).toBeNull();
+    expect(validateModelSummary("@everyone 確認中です。")).toBeNull();
   });
 });

@@ -223,7 +223,7 @@ export function describeProgressEvent(
   event: ThreadEvent,
 ): SafeProgressEvent | null {
   if (event.type === "turn.started") {
-    return progressEvent("turn", "started", "ご依頼内容を確認していますわ…");
+    return progressEvent("turn", "started", "依頼内容を確認しています…");
   }
 
   if (
@@ -267,40 +267,40 @@ export function describeProgressEvent(
     case "file_change": {
       const text =
         item.status === "failed"
-          ? "ファイル変更の結果を確認し、別の方法を検討していますわ…"
-          : "ファイルへの変更を反映しましたわ。";
+          ? "ファイル変更の結果を確認し、別の方法を検討しています…"
+          : "ファイルへの変更を反映しました。";
       return progressEvent("file_change", item.status, text);
     }
     case "mcp_tool_call": {
       const text =
         item.status === "failed"
-          ? "外部ツールの結果を確認し、別の方法を検討していますわ…"
+          ? "外部ツールの結果を確認し、別の方法を検討しています…"
           : item.status === "completed"
-            ? "外部ツールで得た結果を確認していますわ…"
-            : "外部ツールで必要な情報を確認していますわ…";
+            ? "外部ツールで得た結果を確認しています…"
+            : "外部ツールで必要な情報を確認しています…";
       return progressEvent("external_tool", item.status, text);
     }
     case "web_search": {
       const stage = event.type === "item.completed" ? "completed" : "started";
       const text =
         stage === "completed"
-          ? "Web検索の結果を確認していますわ…"
-          : "Web検索で情報を確認していますわ…";
+          ? "Web検索の結果を確認しています…"
+          : "Web検索で情報を確認しています…";
       return progressEvent("web_search", stage, text);
     }
     case "todo_list": {
       const stage = event.type === "item.completed" ? "completed" : "updated";
       const text =
         stage === "completed"
-          ? "作業手順に沿って処理を進めていますわ…"
-          : "作業手順を整理していますわ…";
+          ? "作業手順に沿って処理を進めています…"
+          : "作業手順を整理しています…";
       return progressEvent("todo_list", stage, text);
     }
     case "error":
       return progressEvent(
         "error",
         "completed",
-        "処理結果を確認し、次の方法を検討していますわ…",
+        "処理結果を確認し、次の方法を検討しています…",
       );
   }
 }
@@ -408,14 +408,14 @@ function describeCommandExecution(
     return {
       commandName: descriptor?.label,
       commandSummary: sanitizeCommandForSummary(command),
-      fallbackText: `${commandName}の結果を確認し、別の方法を検討していますわ…`,
+      fallbackText: `${commandName}の結果を確認し、別の方法を検討しています…`,
     };
   }
   if (status === "completed") {
     return {
       commandName: descriptor?.label,
       commandSummary: sanitizeCommandForSummary(command),
-      fallbackText: `${commandName}の処理結果を確認していますわ…`,
+      fallbackText: `${commandName}の処理結果を確認しています…`,
     };
   }
 
@@ -423,8 +423,8 @@ function describeCommandExecution(
     commandName: descriptor?.label,
     commandSummary: sanitizeCommandForSummary(command),
     fallbackText: descriptor
-      ? `${commandName}で${descriptor.activity}していますわ…`
-      : "コマンドで必要な処理を進めていますわ…",
+      ? `${commandName}で${descriptor.activity}しています…`
+      : "コマンドで必要な処理を進めています…",
   };
 }
 
