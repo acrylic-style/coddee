@@ -21,26 +21,3 @@ export class DiscordPcmToRealtimePcm extends Transform {
     callback(null, output.subarray(0, outputOffset));
   }
 }
-
-export class RealtimePcmToDiscordPcm extends Transform {
-  override _transform(
-    chunk: Buffer,
-    _encoding: BufferEncoding,
-    callback: TransformCallback,
-  ): void {
-    const samples = Math.floor(chunk.length / 2);
-    const output = Buffer.allocUnsafe(samples * 8);
-    let outputOffset = 0;
-
-    for (let index = 0; index < samples; index += 1) {
-      const sample = chunk.readInt16LE(index * 2);
-      for (let duplicate = 0; duplicate < 2; duplicate += 1) {
-        output.writeInt16LE(sample, outputOffset);
-        output.writeInt16LE(sample, outputOffset + 2);
-        outputOffset += 4;
-      }
-    }
-
-    callback(null, output);
-  }
-}

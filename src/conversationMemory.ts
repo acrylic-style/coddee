@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import path from "node:path";
-import { sanitizeMemoryText } from "./voice/voiceMemoryStore.js";
 
 interface MemoryNode {
   scope: string;
@@ -29,35 +28,6 @@ export class ConversationMemory {
 
   async remember(scope: string, prompt: string, answer: string): Promise<void> {
     if (this.addTurn(scope, prompt, answer)) await this.save();
-  }
-
-  async seedVoice(
-    records: Record<
-      string,
-      import("./voice/voiceMemoryStore.js").VoiceMemoryRecord
-    >,
-  ): Promise<void> {
-    try {
-      await readFile(this.file, "utf8");
-      return;
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-    }
-    for (const [scope, record] of Object.entries(records)) {
-      if (record.memorySummary) {
-        const id = this.id([scope, "legacy-summary"]);
-        this.nodes[id] = {
-          scope,
-          parent: null,
-          summary: record.memorySummary.slice(0, 160),
-          detail: record.memorySummary,
-        };
-      }
-      for (const turn of record.recentTurns) {
-        this.addTurn(scope, turn.userText, turn.assistantText);
-      }
-    }
-    await this.save();
   }
 
   private addTurn(scope: string, prompt: string, answer: string): boolean {
@@ -140,4 +110,18 @@ export class ConversationMemory {
       });
     return this.pending;
   }
+}
+
+function sanitizeMemoryText(text: string, maxLength: number): string {
+  return text
+    .replace(/https?:\/\/\S+/giu, "[リンク省略]")
+    .replace(/[A-Za-z]:\\[^\s]+/gu, "[ローカルパス省略]")
+    .replace(
+      /\b(?:sk-[A-Za-z0-9_-]{16,}|(?:ghp|github_pat)_[A-Za-z0-9_-]{16,})\b/gu,
+      "[認証情報省略]",
+    )
+    .replace(/[^\S\r\n]+/gu, " ")
+    .replace(/\r?\n\s*/gu, "\n")
+    .trim()
+    .slice(0, maxLength);
 }

@@ -16,9 +16,7 @@ export interface AppConfig {
   progressSummaryModel: string;
   realtimeSessionModel: string;
   realtimeTranscriptionModel: string;
-  voiceConversationModel: string;
-  voicevoxBaseUrl: string;
-  voicevoxSpeakerId: number;
+  meetingMinutesModel: string;
 }
 
 function getRequiredEnv(name: string): string {
@@ -48,21 +46,6 @@ function parseLogLevel(value: string | undefined): LogLevel {
     default:
       return "info";
   }
-}
-
-function parseNonNegativeInteger(
-  value: string | undefined,
-  fallback: number,
-  name: string,
-): number {
-  if (!value?.trim()) {
-    return fallback;
-  }
-  const parsed = Number(value);
-  if (!Number.isInteger(parsed) || parsed < 0) {
-    throw new Error(`Invalid ${name}: ${value}`);
-  }
-  return parsed;
 }
 
 export function loadConfig(): AppConfig {
@@ -95,14 +78,7 @@ export function loadConfig(): AppConfig {
       process.env.REALTIME_SESSION_MODEL?.trim() || "gpt-realtime-2.1-mini",
     realtimeTranscriptionModel:
       process.env.REALTIME_TRANSCRIPTION_MODEL?.trim() || "gpt-live-transcribe",
-    voiceConversationModel:
-      process.env.VOICE_CONVERSATION_MODEL?.trim() || "gpt-5.6-luna",
-    voicevoxBaseUrl:
-      process.env.VOICEVOX_BASE_URL?.trim() || "http://127.0.0.1:50021",
-    voicevoxSpeakerId: parseNonNegativeInteger(
-      process.env.VOICEVOX_SPEAKER_ID,
-      3,
-      "VOICEVOX_SPEAKER_ID",
-    ),
+    meetingMinutesModel:
+      process.env.MEETING_MINUTES_MODEL?.trim() || "gpt-5.6-luna",
   };
 }

@@ -51,6 +51,7 @@ export function buildHelpMessage(): string {
     "- `@bot <prompt>` で Codex に質問",
     "- `@bot status` で状態確認",
     "- `@bot reset` で会話リセット",
+    "- `@bot voice join` で議事録を開始し、`@bot voice leave` で終了",
     "- 自然な文章でリマインドの作成・一覧・変更・削除",
   ].join("\n");
 }

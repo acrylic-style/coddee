@@ -89,8 +89,6 @@ export class RealtimeTranscriptionSession {
                   transcription: {
                     model: this.options.transcriptionModel,
                     language: "ja",
-                    prompt:
-                      "日本語の会話です。ウェイクワード 「アレクサ」を正確に表記してください。また、Codex(コーデックス)も正確に表記してください。",
                   },
                   turn_detection: null,
                 },
@@ -119,11 +117,13 @@ export class RealtimeTranscriptionSession {
         rejectConnection(error);
       });
       socket.on("close", () => {
-        this.socket = null;
-        this.connectPromise = null;
         const error = new Error("Realtime transcription connection closed");
         rejectConnection(error);
-        this.rejectAll(error);
+        if (this.socket === socket) {
+          this.socket = null;
+          this.connectPromise = null;
+          this.rejectAll(error);
+        }
       });
     });
     this.connectPromise = connection;
