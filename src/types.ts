@@ -10,6 +10,7 @@ export type CodexUserInput =
 
 export type CodexInput = string | CodexUserInput[];
 export type CodexApproval = (operation: string) => Promise<boolean>;
+export type CodexApprovalsReviewer = "user" | "auto_review";
 export type ProtectedFetch = (url: string) => Promise<string>;
 
 export interface TurnRequest {

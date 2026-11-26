@@ -1,11 +1,14 @@
 import { spawn } from "node:child_process";
 import { createInterface } from "node:readline";
-import { createRequire } from "node:module";
-import { fileURLToPath } from "node:url";
-import path from "node:path";
 import type { ThreadEvent, ThreadItem } from "@openai/codex-sdk";
-import type { CodexApproval, CodexInput, ProtectedFetch } from "../types.js";
+import type {
+  CodexApproval,
+  CodexApprovalsReviewer,
+  CodexInput,
+  ProtectedFetch,
+} from "../types.js";
 import { REMINDER_OUTPUT_SCHEMA } from "../reminderProtocol.js";
+import { codexCliPath } from "./codexCliPath.js";
 
 export async function* appServerTurn(
   cwd: string,
@@ -13,16 +16,9 @@ export async function* appServerTurn(
   input: CodexInput,
   approve?: CodexApproval,
   protectedFetch?: ProtectedFetch,
+  approvalsReviewer: CodexApprovalsReviewer = "user",
 ): AsyncGenerator<ThreadEvent> {
-  const sdkRequire = createRequire(
-    fileURLToPath(import.meta.resolve("@openai/codex-sdk")),
-  );
-  const cli = path.join(
-    path.dirname(sdkRequire.resolve("@openai/codex/package.json")),
-    "bin",
-    "codex.js",
-  );
-  const child = spawn(process.execPath, [cli, "app-server"], {
+  const child = spawn(process.execPath, [codexCliPath(), "app-server"], {
     cwd,
     windowsHide: true,
     stdio: ["pipe", "pipe", "ignore"],
@@ -50,6 +46,11 @@ export async function* appServerTurn(
       const event = JSON.parse(line);
       if (event.method && event.id !== undefined) {
         const params = event.params ?? {};
+        const legacyApproval =
+          event.method === "applyPatchApproval" ||
+          event.method === "execCommandApproval";
+        const permissionsApproval =
+          event.method === "item/permissions/requestApproval";
         if (
           event.method === "item/tool/call" &&
           threadId &&
@@ -78,27 +79,56 @@ export async function* appServerTurn(
             },
           });
         } else if (
-          (event.method === "item/commandExecution/requestApproval" ||
+          (legacyApproval ||
+            permissionsApproval ||
+            event.method === "item/commandExecution/requestApproval" ||
             event.method === "item/fileChange/requestApproval") &&
           threadId &&
-          params.threadId === threadId
+          (legacyApproval ? params.conversationId : params.threadId) ===
+            threadId
         ) {
           const details = [
-            params.command,
+            event.method,
+            Array.isArray(params.command)
+              ? JSON.stringify(params.command)
+              : params.command,
             params.cwd,
             params.grantRoot,
             params.reason,
+            params.fileChanges &&
+              JSON.stringify(Object.keys(params.fileChanges)),
+            (params.permissions || params.additionalPermissions) &&
+              JSON.stringify(
+                params.permissions ?? params.additionalPermissions,
+                null,
+                2,
+              ),
+            params.networkApprovalContext &&
+              JSON.stringify(params.networkApprovalContext),
+            params.itemId,
           ]
             .filter((value) => typeof value === "string" && value.length)
             .join("\n");
-          const accepted = details
-            ? await (approve?.(details) ?? Promise.resolve(false)).catch(
-                () => false,
-              )
-            : false;
+          const accepted = await (
+            approve?.(details) ?? Promise.resolve(false)
+          ).catch(() => false);
+          const result = permissionsApproval
+            ? {
+                permissions: accepted ? (params.permissions ?? {}) : {},
+                scope: "turn",
+              }
+            : {
+                decision: legacyApproval
+                  ? accepted
+                    ? "approved"
+                    : { denied: { rejection: "Approval not granted" } }
+                  : accepted
+                    ? "accept"
+                    : "decline",
+              };
           send({
             id: event.id,
-            result: { decision: accepted ? "accept" : "decline" },
+            result,
           });
         } else {
           send({
@@ -116,7 +146,7 @@ export async function* appServerTurn(
           cwd,
           sandbox: approve ? "workspace-write" : "read-only",
           approvalPolicy: approve ? "on-request" : "never",
-          approvalsReviewer: "user",
+          approvalsReviewer: approve ? approvalsReviewer : "user",
           ...(protectedFetch && !threadId
             ? {
                 dynamicTools: [

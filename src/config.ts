@@ -2,6 +2,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import type { LogLevel } from "./logger.js";
+import type { CodexApprovalsReviewer } from "./types.js";
 
 dotenv.config();
 
@@ -10,6 +11,7 @@ export interface AppConfig {
   discordClientId?: string;
   allowedDiscordUserIds: Set<string>;
   codexWorkdir: string;
+  codexApprovalsReviewer: CodexApprovalsReviewer;
   logLevel: LogLevel;
   reminderTimeZone: string;
   openAiApiKey?: string;
@@ -50,6 +52,14 @@ function parseLogLevel(value: string | undefined): LogLevel {
 
 export function loadConfig(): AppConfig {
   const codexWorkdir = path.resolve(getRequiredEnv("CODEX_WORKDIR"));
+  const codexApprovalsReviewer =
+    process.env.CODEX_APPROVALS_REVIEWER?.trim() || "user";
+  if (
+    codexApprovalsReviewer !== "user" &&
+    codexApprovalsReviewer !== "auto_review"
+  ) {
+    throw new Error("CODEX_APPROVALS_REVIEWER must be user or auto_review");
+  }
   const reminderTimeZone =
     process.env.REMINDER_TIME_ZONE?.trim() || "Asia/Tokyo";
 
@@ -69,6 +79,7 @@ export function loadConfig(): AppConfig {
       getRequiredEnv("ALLOWED_DISCORD_USER_IDS"),
     ),
     codexWorkdir,
+    codexApprovalsReviewer,
     logLevel: parseLogLevel(process.env.LOG_LEVEL),
     reminderTimeZone,
     openAiApiKey: process.env.OPENAI_API_KEY?.trim() || undefined,

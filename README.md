@@ -8,6 +8,8 @@
 2. `.env.example` を `.env` にコピーして値を設定
 3. `npm run dev`
 
+Discordの通常のテキスト依頼でCodexの自動レビュー（Approve for me）を使うには、`.env` に `CODEX_APPROVALS_REVIEWER=auto_review` を設定してBotを再起動します。既定値の `user` ではDiscordのボタンで承認します。自動レビューの対象外でApp Serverから承認要求が届いた場合も、Discordのボタンで判断できます。
+
 進捗要約に通常のOpenAIモデルを使う場合は、`.env`に`OPENAI_API_KEY`を設定します。モデルは`PROGRESS_SUMMARY_MODEL`で変更でき、既定値は`gpt-6.2-sol`です。APIキーがない場合は、安全な固定文へ自動的にフォールバックします。
 
 ## Commands

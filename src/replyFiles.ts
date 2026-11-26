@@ -40,13 +40,14 @@ export async function attachReplyFiles(
     output += text.slice(offset, match.index);
     offset = match.index + match[0].length;
     const raw = match[2] ?? match[3];
-    let label = "ファイル";
+    let displayPath = path.resolve(root, raw);
     try {
       const decoded = decodeURIComponent(raw)
         .replace(/:\d+(?::\d+)?$/u, "")
         .replace(/^\/(?=[a-z]:[\\/])/iu, "");
       const candidate = path.resolve(root, decoded);
-      label = path.basename(candidate).replace(/[`\r\n]/gu, "");
+      displayPath = candidate;
+      const label = path.basename(candidate).replace(/[`\r\n]/gu, "");
       if (!permitted(root, candidate)) throw new Error("添付対象外");
       const file = await realpath(candidate);
       if (!permitted(root, file)) throw new Error("添付対象外");
@@ -78,7 +79,14 @@ export async function attachReplyFiles(
         : error instanceof URIError
           ? "パスの形式が無効"
           : (error as Error).message;
-      output += `${label}（添付不可・${reason}）`;
+      const ticks = "`".repeat(
+        1 +
+          Math.max(
+            0,
+            ...(displayPath.match(/`+/gu) ?? []).map((run) => run.length),
+          ),
+      );
+      output += `${ticks} ${displayPath.replace(/[\r\n]/gu, " ")} ${ticks}（添付不可・${reason}）`;
     }
   }
   return { text: output + text.slice(offset), files };

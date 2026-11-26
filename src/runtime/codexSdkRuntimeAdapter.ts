@@ -8,6 +8,7 @@ import type { Logger } from "../logger.js";
 import type {
   CodexInput,
   CodexApproval,
+  CodexApprovalsReviewer,
   ProtectedFetch,
   CodexProgressCallback,
   CodexRuntimeAdapter,
@@ -26,6 +27,7 @@ interface RuntimeOptions {
   logger: Logger;
   progressSummarizer?: ProgressSummarizer;
   executionMode?: "unrestricted" | "read-only" | "write-enabled";
+  approvalsReviewer?: CodexApprovalsReviewer;
 }
 
 interface InternalSession {
@@ -41,11 +43,13 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
   private readonly codex: Codex;
   private readonly progressSummarizer?: ProgressSummarizer;
   private readonly executionMode: NonNullable<RuntimeOptions["executionMode"]>;
+  private readonly approvalsReviewer?: CodexApprovalsReviewer;
 
   constructor(options: RuntimeOptions) {
     this.logger = options.logger;
     this.progressSummarizer = options.progressSummarizer;
     this.executionMode = options.executionMode ?? "unrestricted";
+    this.approvalsReviewer = options.approvalsReviewer;
     this.codex = new Codex();
   }
 
@@ -104,6 +108,7 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
             input,
             approve,
             protectedFetch,
+            this.approvalsReviewer,
           )
         : (
             await session.thread.runStreamed(input, {

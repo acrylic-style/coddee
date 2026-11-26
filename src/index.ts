@@ -68,6 +68,7 @@ async function main(): Promise<void> {
     logger,
     progressSummarizer,
     executionMode: "write-enabled",
+    approvalsReviewer: config.codexApprovalsReviewer,
   });
   const persistenceStore = new SessionPersistenceStore(
     "data/session-state.json",
@@ -304,9 +305,18 @@ async function main(): Promise<void> {
     }
     const approve = async (operation: string): Promise<boolean> => {
       try {
+        const heading = "Codexがサンドボックス外の操作の承認を求めています。";
+        const content = heading + "\n" + operation;
         const approval = await message.reply({
-          content:
-            "Codexがサンドボックス外の操作の承認を求めています。\n" + operation,
+          ...(content.length <= 2_000
+            ? { content }
+            : {
+                content:
+                  heading + "\n操作の詳細は添付ファイルをご確認ください。",
+                files: [
+                  { attachment: Buffer.from(operation), name: "approval.txt" },
+                ],
+              }),
           allowedMentions: { parse: [] },
           components: [
             new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -338,6 +348,15 @@ async function main(): Promise<void> {
             content: approved ? "承認されました。" : "却下されました。",
             components: [],
           });
+          if (approved) {
+            setTimeout(() => {
+              void approval.delete().catch((error: unknown) => {
+                logger.warn("Failed to delete Codex approval message", {
+                  error: String(error),
+                });
+              });
+            }, 30_000).unref();
+          }
         } else {
           await approval.edit({
             content: "承認の期限が切れました。",
