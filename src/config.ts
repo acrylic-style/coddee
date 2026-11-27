@@ -84,12 +84,12 @@ export function loadConfig(): AppConfig {
     reminderTimeZone,
     openAiApiKey: process.env.OPENAI_API_KEY?.trim() || undefined,
     progressSummaryModel:
-      process.env.PROGRESS_SUMMARY_MODEL?.trim() || "gpt-5.6-luna",
+      process.env.PROGRESS_SUMMARY_MODEL?.trim() || "gpt-6.2-sol",
     realtimeSessionModel:
       process.env.REALTIME_SESSION_MODEL?.trim() || "gpt-realtime-2.1-mini",
     realtimeTranscriptionModel:
       process.env.REALTIME_TRANSCRIPTION_MODEL?.trim() || "gpt-live-transcribe",
     meetingMinutesModel:
-      process.env.MEETING_MINUTES_MODEL?.trim() || "gpt-5.6-luna",
+      process.env.MEETING_MINUTES_MODEL?.trim() || "gpt-6-luna",
   };
 }
