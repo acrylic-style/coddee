@@ -18,6 +18,7 @@ import { Logger } from "./logger.js";
 import { OpenAiProgressSummarizer } from "./openAiProgressSummarizer.js";
 import {
   fetchRecentContext,
+  createMessageHistory,
   prependContextToInput,
 } from "./recentMessageContext.js";
 import { CodexSdkRuntimeAdapter } from "./runtime/codexSdkRuntimeAdapter.js";
@@ -186,8 +187,8 @@ async function main(): Promise<void> {
     if (!mentionsBot) return;
 
     const sessionKey = protectedFetchEnabled
-      ? `protected-fetch:${message.channelId}`
-      : message.channelId;
+      ? `message-history:protected-fetch:${message.channelId}`
+      : `message-history:${message.channelId}`;
 
     if (!config.allowedDiscordUserIds.has(message.author.id)) {
       await message.reply("この Bot の利用は許可ユーザーに限定されています。");
@@ -410,6 +411,7 @@ async function main(): Promise<void> {
           input: inputWithReminders,
           requestedAt: startedAt,
           approve: readOnly ? undefined : approve,
+          messageHistory: createMessageHistory(message),
           protectedFetch: protectedFetchEnabled
             ? async (url) => {
                 const requestedUrls =

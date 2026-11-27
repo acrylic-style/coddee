@@ -10,6 +10,7 @@ import type {
   CodexApproval,
   CodexApprovalsReviewer,
   ProtectedFetch,
+  MessageHistory,
   CodexProgressCallback,
   CodexRuntimeAdapter,
   CodexStatusResult,
@@ -98,10 +99,11 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
     onProgress?: CodexProgressCallback,
     approve?: CodexApproval,
     protectedFetch?: ProtectedFetch,
+    messageHistory?: MessageHistory,
   ): Promise<CodexTurnResult> {
     const session = this.getSession(sessionId);
     const events =
-      approve || protectedFetch
+      approve || protectedFetch || messageHistory
         ? appServerTurn(
             session.workdir,
             session.persistedThreadId,
@@ -109,6 +111,7 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
             approve,
             protectedFetch,
             this.approvalsReviewer,
+            messageHistory,
           )
         : (
             await session.thread.runStreamed(input, {

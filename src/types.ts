@@ -11,6 +11,8 @@ export type CodexUserInput =
 export type CodexInput = string | CodexUserInput[];
 export type CodexApproval = (operation: string) => Promise<boolean>;
 export type CodexApprovalsReviewer = "user" | "auto_review";
+export type MessageHistory = (args: unknown) => Promise<string>;
+
 export type ProtectedFetch = (url: string) => Promise<string>;
 
 export interface TurnRequest {
@@ -20,6 +22,7 @@ export interface TurnRequest {
   requestedAt: number;
   approve?: CodexApproval;
   protectedFetch?: ProtectedFetch;
+  messageHistory?: MessageHistory;
 }
 
 export interface SessionState {
@@ -83,6 +86,7 @@ export interface CodexRuntimeAdapter {
     onProgress?: CodexProgressCallback,
     approve?: CodexApproval,
     protectedFetch?: ProtectedFetch,
+    messageHistory?: MessageHistory,
   ): Promise<CodexTurnResult>;
   getPersistentThreadId(sessionId: string): string | null;
   getStatus(sessionId: string): Promise<CodexStatusResult>;

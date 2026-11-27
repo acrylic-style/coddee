@@ -162,6 +162,7 @@ export class CodexSessionManager {
           onProgress,
           turn.approve,
           turn.protectedFetch,
+          turn.messageHistory,
         );
       } catch (error) {
         if (
@@ -188,6 +189,7 @@ export class CodexSessionManager {
           onProgress,
           turn.approve,
           turn.protectedFetch,
+          turn.messageHistory,
         );
       }
 
