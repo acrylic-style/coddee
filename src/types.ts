@@ -38,6 +38,8 @@ export interface SessionState {
 }
 
 export interface CodexTurnResult {
+  conversationSummary?: string;
+  webDownloadPaths?: string[];
   text: string;
   reminderActions?: ReminderAction[];
   attachments?: CodexOutputAttachment[];

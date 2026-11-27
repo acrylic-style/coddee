@@ -2,8 +2,57 @@ import type { Message } from "discord.js";
 import { describe, expect, it, vi } from "vitest";
 import {
   createMessageHistory,
+  fetchRecentContext,
   prependContextToInput,
 } from "../src/recentMessageContext.js";
+
+it.each(["older", "recent", "deleted", "channel"] as const)(
+  "builds context when the thread starter is %s",
+  async (scenario) => {
+    const starter = {
+      id: "1",
+      content: "original topic",
+      author: { username: "author" },
+      attachments: new Map([["file", { name: "report.zip" }]]),
+    };
+    const recent = {
+      ...starter,
+      id: "2",
+      content: "recent reply",
+      attachments: new Map(),
+    };
+    const messages = new Map([[recent.id, recent]]);
+    if (scenario === "recent") messages.set(starter.id, starter);
+    const fetchStarterMessage = vi.fn().mockResolvedValue(starter);
+    if (scenario === "deleted") {
+      fetchStarterMessage.mockRejectedValue(new Error("Unknown Message"));
+    }
+    const context = await fetchRecentContext({
+      id: "3",
+      channel: {
+        isThread: () => scenario !== "channel",
+        messages: { fetch: vi.fn().mockResolvedValue(messages) },
+        fetchStarterMessage,
+      },
+    } as unknown as Message);
+
+    expect(context).toContain("recent reply");
+    if (scenario === "older" || scenario === "recent") {
+      expect(context).toContain(
+        "[スレッド開始メッセージ] [author] original topic [attachments: report.zip]",
+      );
+      expect(context.match(/original topic/gu)).toHaveLength(1);
+      expect(context.indexOf("original topic")).toBeLessThan(
+        context.indexOf("recent reply"),
+      );
+    } else {
+      expect(context).not.toContain("original topic");
+    }
+    expect(fetchStarterMessage).toHaveBeenCalledTimes(
+      scenario === "channel" ? 0 : 1,
+    );
+  },
+);
 
 it("fetches older messages across Discord pages using the request as the anchor", async () => {
   const entries = Array.from({ length: 105 }, (_, index) => ({

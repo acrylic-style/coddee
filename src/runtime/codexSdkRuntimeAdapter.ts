@@ -19,7 +19,10 @@ import type {
   ProgressSummarizer,
   SafeProgressEvent,
 } from "../types.js";
-import { REMINDER_OUTPUT_SCHEMA } from "../reminderProtocol.js";
+import {
+  REMINDER_OUTPUT_SCHEMA,
+  WEB_OUTPUT_SCHEMA,
+} from "../reminderProtocol.js";
 import { sanitizeCommandForSummary } from "../commandSanitizer.js";
 import { ProgressSummaryScheduler } from "../progressSummaryScheduler.js";
 import { extractToolOutputImages } from "../toolOutputImages.js";
@@ -30,6 +33,7 @@ interface RuntimeOptions {
   progressSummarizer?: ProgressSummarizer;
   executionMode?: "unrestricted" | "read-only" | "write-enabled";
   approvalsReviewer?: CodexApprovalsReviewer;
+  webEnabled?: boolean;
 }
 
 interface InternalSession {
@@ -47,7 +51,7 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
   private readonly executionMode: NonNullable<RuntimeOptions["executionMode"]>;
   private readonly approvalsReviewer?: CodexApprovalsReviewer;
 
-  constructor(options: RuntimeOptions) {
+  constructor(private readonly options: RuntimeOptions) {
     this.logger = options.logger;
     this.progressSummarizer = options.progressSummarizer;
     this.executionMode = options.executionMode ?? "unrestricted";
@@ -115,10 +119,13 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
             this.approvalsReviewer,
             messageHistory,
             discordAttachmentDownload,
+            this.options.webEnabled,
           )
         : (
             await session.thread.runStreamed(input, {
-              outputSchema: REMINDER_OUTPUT_SCHEMA,
+              outputSchema: this.options.webEnabled
+                ? WEB_OUTPUT_SCHEMA
+                : REMINDER_OUTPUT_SCHEMA,
             })
           ).events;
     const items: ThreadItem[] = [];
@@ -164,6 +171,8 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
       reply: string;
       reminderActions: CodexTurnResult["reminderActions"];
       includeToolImages: boolean;
+      conversationSummary?: string;
+      webDownloadPaths?: string[];
     };
     const extractedImages = extractToolOutputImages(
       items,
@@ -171,6 +180,12 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
     );
     return {
       text: parsed.reply,
+      ...(this.options.webEnabled
+        ? {
+            conversationSummary: parsed.conversationSummary,
+            webDownloadPaths: parsed.webDownloadPaths,
+          }
+        : {}),
       reminderActions: parsed.reminderActions,
       attachments: extractedImages.attachments,
       omittedAttachmentCount: extractedImages.omittedCount,

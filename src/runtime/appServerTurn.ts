@@ -9,7 +9,10 @@ import type {
   MessageHistory,
   DiscordAttachmentDownload,
 } from "../types.js";
-import { REMINDER_OUTPUT_SCHEMA } from "../reminderProtocol.js";
+import {
+  REMINDER_OUTPUT_SCHEMA,
+  WEB_OUTPUT_SCHEMA,
+} from "../reminderProtocol.js";
 import { MESSAGE_HISTORY_TOOL } from "../recentMessageContext.js";
 import { DISCORD_ATTACHMENT_TOOL } from "../discordAttachmentTool.js";
 import { codexCliPath } from "./codexCliPath.js";
@@ -23,6 +26,7 @@ export async function* appServerTurn(
   approvalsReviewer: CodexApprovalsReviewer = "user",
   messageHistory?: MessageHistory,
   discordAttachmentDownload?: DiscordAttachmentDownload,
+  webEnabled = false,
 ): AsyncGenerator<ThreadEvent> {
   const child = spawn(process.execPath, [codexCliPath(), "app-server"], {
     cwd,
@@ -212,7 +216,7 @@ export async function* appServerTurn(
         yield { type: "thread.started", thread_id: event.result.thread.id };
         request(3, "turn/start", {
           threadId,
-          outputSchema: REMINDER_OUTPUT_SCHEMA,
+          outputSchema: webEnabled ? WEB_OUTPUT_SCHEMA : REMINDER_OUTPUT_SCHEMA,
           input:
             typeof input === "string"
               ? [{ type: "text", text: input }]

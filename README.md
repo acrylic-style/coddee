@@ -61,3 +61,13 @@ Discordの通常のテキスト依頼でCodexの自動レビュー（Approve for
 `.env` の `CF_SERVICE_TOKENS` にホスト名とサービス​​トークンを設定すると、許可ユーザーが `@Bot fetch https://example.domain/path` で取得できます。取得結果は依頼者にDMで送ります。HTTPSの登録ホストにだけ認証ヘッダーを付け、リダイレクトは追跡しません。
 
 通常のCodexテキスト依頼でも「https://example.domain/path を読んで要約して」のように指定できます。取得結果はDM、Codexの回答は依頼元チャンネルに届きます。HTMLは `CLOUDFLARE_ACCOUNT_ID` と `CLOUDFLARE_API_TOKEN`（Browser Run - Edit）を使用してBrowser Runへ送信し、Markdownに変換します。取得HTMLは最大512 KiB、変換結果は先頭8 KiBです。
+
+## Webダウンロードと会話履歴
+
+1. Discord Developer Portal の OAuth2 Redirects に `https://<公開ホスト>/auth/callback` を登録します。
+2. `.env` に `WEB_ENABLED=true`、`WEB_BASE_URL=https://<公開ホスト>`、`DISCORD_CLIENT_ID`、`DISCORD_CLIENT_SECRET` を設定します。
+3. HTTPSリバースプロキシからBotの待ち受け先（既定 `127.0.0.1:3000`）へ転送します。UUIDリンクやOAuthコールバックのパス・クエリをアクセスログに記録しないよう設定します。
+
+- Discordで「このレポートをWebでダウンロードできるようにして」と頼むと、Codexが選んだ対象をBotが共有します。リンクは24時間有効で、URLを知っている人はログインなしで取得できます。
+- WebトップでDiscordにログインすると、導入後のBotとの会話と依頼ごとのAI要約を、現在閲覧できるチャンネルごとに確認できます。
+- 履歴と共有コピーはBotの `data/web/` に保存します。期限が切れた共有コピーは自動削除されます。

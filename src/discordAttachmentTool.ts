@@ -25,7 +25,9 @@ export const DISCORD_ATTACHMENT_TOOL = {
 export function createDiscordAttachmentTool(message: Message) {
   let directory: string | undefined;
   let calls = 0;
+  const downloaded = new Map<string, string>();
   return {
+    downloaded,
     async call(args: unknown): Promise<string> {
       const { messageId, attachment } = (args ?? {}) as Record<string, unknown>;
       if (
@@ -86,6 +88,7 @@ export function createDiscordAttachmentTool(message: Message) {
         path.join(tmpdir(), "discord-codex-history-"),
       );
       const localPath = await downloadAttachment(selected, directory);
+      downloaded.set(localPath, selected.name);
       return JSON.stringify({
         messageId,
         attachmentId: selected.id,

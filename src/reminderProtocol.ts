@@ -87,3 +87,23 @@ export function prependReminderInstructions(
   }
   return [{ type: "text", text: instructions }, ...input];
 }
+
+export const WEB_OUTPUT_SCHEMA = {
+  ...REMINDER_OUTPUT_SCHEMA,
+  properties: {
+    ...REMINDER_OUTPUT_SCHEMA.properties,
+    conversationSummary: { type: ["string", "null"] },
+    webDownloadPaths: { type: "array", items: { type: "string" } },
+  },
+  required: [
+    ...REMINDER_OUTPUT_SCHEMA.required,
+    "conversationSummary",
+    "webDownloadPaths",
+  ],
+};
+
+export function wantsWebDownload(prompt: string) {
+  return /ダウンロードリンク|共有リンク|ダウンロード(?:用|できる)|(?:Web|ブラウザ).{0,16}(?:共有|取得|落と|ダウンロード)|download.{0,16}link|share.{0,16}link/iu.test(
+    prompt,
+  );
+}

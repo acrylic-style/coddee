@@ -65,12 +65,14 @@ export async function createCodexInput(
   input: CodexInput;
   cleanup: () => Promise<void>;
   imageCount: number;
+  downloaded: ReadonlyMap<string, string>;
 }> {
   if (attachments.length === 0) {
     return {
       input: prompt,
       cleanup: async () => {},
       imageCount: 0,
+      downloaded: new Map(),
     };
   }
 
@@ -79,11 +81,13 @@ export async function createCodexInput(
   );
   const images: CodexUserInput[] = [];
   const filePaths: string[] = [];
+  const downloaded = new Map<string, string>();
 
   try {
     for (const attachment of attachments) {
       const filePath = await downloadAttachment(attachment, tempDirectory);
 
+      downloaded.set(filePath, attachment.name);
       if (isImageAttachment(attachment)) {
         images.push({ type: "local_image", path: filePath });
       } else {
@@ -109,5 +113,6 @@ export async function createCodexInput(
       await rm(tempDirectory, { recursive: true, force: true });
     },
     imageCount: images.length,
+    downloaded,
   };
 }

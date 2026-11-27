@@ -5,7 +5,7 @@ const limit = 8 * 1024 * 1024;
 const reference =
   /\[([^\]\n]+)\]\(<?((?:[a-z]:[\\/]|\/(?!\/)|\.\.?[\\/])[^\n)>]+)>?\)|`((?:[a-z]:[\\/]|\/(?!\/)|\.\.?[\\/])[^\n`]+)`/giu;
 
-function permitted(root: string, file: string): boolean {
+export function permittedReplyPath(root: string, file: string): boolean {
   const relative = path.relative(root, file);
   return (
     Boolean(relative) &&
@@ -48,9 +48,9 @@ export async function attachReplyFiles(
       const candidate = path.resolve(root, decoded);
       displayPath = candidate;
       const label = path.basename(candidate).replace(/[`\r\n]/gu, "");
-      if (!permitted(root, candidate)) throw new Error("添付対象外");
+      if (!permittedReplyPath(root, candidate)) throw new Error("添付対象外");
       const file = await realpath(candidate);
-      if (!permitted(root, file)) throw new Error("添付対象外");
+      if (!permittedReplyPath(root, file)) throw new Error("添付対象外");
       if (!attached.has(file)) {
         if (files.length >= maxFiles) throw new Error("添付数の上限");
         const handle = await open(file, "r");
