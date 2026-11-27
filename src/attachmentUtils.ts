@@ -28,6 +28,36 @@ function sanitizeFilename(name: string): string {
   return name.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
 
+export async function downloadAttachment(
+  attachment: Attachment,
+  directory: string,
+): Promise<string> {
+  const response = await fetch(attachment.url, {
+    redirect: "error",
+    signal: AbortSignal.timeout(60_000),
+  });
+  if (!response.ok || !response.body) {
+    throw new Error(
+      `Failed to download attachment: ${attachment.name} (${response.status})`,
+    );
+  }
+
+  const filePath = path.join(
+    directory,
+    `${randomUUID()}-${sanitizeFilename(attachment.name)}`,
+  );
+  try {
+    await pipeline(
+      response.body,
+      createWriteStream(filePath, { flags: "wx", mode: 0o600 }),
+    );
+  } catch (error) {
+    await rm(filePath, { force: true });
+    throw error;
+  }
+  return filePath;
+}
+
 export async function createCodexInput(
   prompt: string,
   attachments: Attachment[],
@@ -52,16 +82,7 @@ export async function createCodexInput(
 
   try {
     for (const attachment of attachments) {
-      const response = await fetch(attachment.url);
-      if (!response.ok || !response.body) {
-        throw new Error(
-          `Failed to download attachment: ${attachment.name} (${response.status})`,
-        );
-      }
-
-      const filename = `${randomUUID()}-${sanitizeFilename(attachment.name)}`;
-      const filePath = path.join(tempDirectory, filename);
-      await pipeline(response.body, createWriteStream(filePath));
+      const filePath = await downloadAttachment(attachment, tempDirectory);
 
       if (isImageAttachment(attachment)) {
         images.push({ type: "local_image", path: filePath });

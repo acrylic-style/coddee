@@ -11,6 +11,7 @@ import type {
   CodexApprovalsReviewer,
   ProtectedFetch,
   MessageHistory,
+  DiscordAttachmentDownload,
   CodexProgressCallback,
   CodexRuntimeAdapter,
   CodexStatusResult,
@@ -100,10 +101,11 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
     approve?: CodexApproval,
     protectedFetch?: ProtectedFetch,
     messageHistory?: MessageHistory,
+    discordAttachmentDownload?: DiscordAttachmentDownload,
   ): Promise<CodexTurnResult> {
     const session = this.getSession(sessionId);
     const events =
-      approve || protectedFetch || messageHistory
+      approve || protectedFetch || messageHistory || discordAttachmentDownload
         ? appServerTurn(
             session.workdir,
             session.persistedThreadId,
@@ -112,6 +114,7 @@ export class CodexSdkRuntimeAdapter implements CodexRuntimeAdapter {
             protectedFetch,
             this.approvalsReviewer,
             messageHistory,
+            discordAttachmentDownload,
           )
         : (
             await session.thread.runStreamed(input, {

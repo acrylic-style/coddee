@@ -12,6 +12,7 @@ export type CodexInput = string | CodexUserInput[];
 export type CodexApproval = (operation: string) => Promise<boolean>;
 export type CodexApprovalsReviewer = "user" | "auto_review";
 export type MessageHistory = (args: unknown) => Promise<string>;
+export type DiscordAttachmentDownload = (args: unknown) => Promise<string>;
 
 export type ProtectedFetch = (url: string) => Promise<string>;
 
@@ -23,6 +24,7 @@ export interface TurnRequest {
   approve?: CodexApproval;
   protectedFetch?: ProtectedFetch;
   messageHistory?: MessageHistory;
+  discordAttachmentDownload?: DiscordAttachmentDownload;
 }
 
 export interface SessionState {
@@ -87,6 +89,7 @@ export interface CodexRuntimeAdapter {
     approve?: CodexApproval,
     protectedFetch?: ProtectedFetch,
     messageHistory?: MessageHistory,
+    discordAttachmentDownload?: DiscordAttachmentDownload,
   ): Promise<CodexTurnResult>;
   getPersistentThreadId(sessionId: string): string | null;
   getStatus(sessionId: string): Promise<CodexStatusResult>;

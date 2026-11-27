@@ -9,10 +9,14 @@ vi.mock("../src/runtime/codexCliPath.js", () => ({
 }));
 
 it.each(["user", "auto_review"] as const)(
-  "uses reviewer %s and routes client approval requests",
+  "uses reviewer %s and routes approval and attachment requests",
   async (reviewer) => {
     const threadId = "thread";
     const permissions = { fileSystem: { write: ["/outside/memory"] } };
+    const attachmentArgs = {
+      messageId: "123456789012345678",
+      attachment: "report.zip",
+    };
     const requests = [
       {
         method: "item/permissions/requestApproval",
@@ -36,6 +40,14 @@ it.each(["user", "auto_review"] as const)(
       {
         method: "execCommandApproval",
         params: { conversationId: threadId, command: ["pwd"] },
+      },
+      {
+        method: "item/tool/call",
+        params: {
+          threadId,
+          tool: "download_discord_attachment",
+          arguments: attachmentArgs,
+        },
       },
     ];
     const stdout = new PassThrough();
@@ -75,16 +87,30 @@ it.each(["user", "auto_review"] as const)(
       .mockResolvedValue(true)
       .mockResolvedValueOnce(true)
       .mockResolvedValueOnce(false);
+    const download = vi.fn().mockResolvedValue('{"path":"/tmp/report.zip"}');
 
     await Array.fromAsync(
-      appServerTurn(process.cwd(), null, "test", approve, undefined, reviewer),
+      appServerTurn(
+        process.cwd(),
+        null,
+        "test",
+        approve,
+        undefined,
+        reviewer,
+        undefined,
+        download,
+      ),
     );
 
     expect(threadParams).toMatchObject({
       approvalPolicy: "on-request",
       approvalsReviewer: reviewer,
+      dynamicTools: [
+        expect.objectContaining({ name: "download_discord_attachment" }),
+      ],
     });
-    expect(approve).toHaveBeenCalledTimes(requests.length);
+    expect(download).toHaveBeenCalledExactlyOnceWith(attachmentArgs);
+    expect(approve).toHaveBeenCalledTimes(5);
     expect(approve).toHaveBeenNthCalledWith(
       1,
       expect.stringContaining("/outside/memory"),
@@ -107,6 +133,15 @@ it.each(["user", "auto_review"] as const)(
       { id: 102, result: { decision: "accept" } },
       { id: 103, result: { decision: "approved" } },
       { id: 104, result: { decision: "approved" } },
+      {
+        id: 105,
+        result: {
+          success: true,
+          contentItems: [
+            { type: "inputText", text: '{"path":"/tmp/report.zip"}' },
+          ],
+        },
+      },
     ]);
   },
 );

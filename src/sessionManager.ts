@@ -163,6 +163,7 @@ export class CodexSessionManager {
           turn.approve,
           turn.protectedFetch,
           turn.messageHistory,
+          turn.discordAttachmentDownload,
         );
       } catch (error) {
         if (
@@ -190,6 +191,7 @@ export class CodexSessionManager {
           turn.approve,
           turn.protectedFetch,
           turn.messageHistory,
+          turn.discordAttachmentDownload,
         );
       }
 

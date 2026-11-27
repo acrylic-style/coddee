@@ -7,9 +7,11 @@ import type {
   CodexInput,
   ProtectedFetch,
   MessageHistory,
+  DiscordAttachmentDownload,
 } from "../types.js";
 import { REMINDER_OUTPUT_SCHEMA } from "../reminderProtocol.js";
 import { MESSAGE_HISTORY_TOOL } from "../recentMessageContext.js";
+import { DISCORD_ATTACHMENT_TOOL } from "../discordAttachmentTool.js";
 import { codexCliPath } from "./codexCliPath.js";
 
 export async function* appServerTurn(
@@ -20,6 +22,7 @@ export async function* appServerTurn(
   protectedFetch?: ProtectedFetch,
   approvalsReviewer: CodexApprovalsReviewer = "user",
   messageHistory?: MessageHistory,
+  discordAttachmentDownload?: DiscordAttachmentDownload,
 ): AsyncGenerator<ThreadEvent> {
   const child = spawn(process.execPath, [codexCliPath(), "app-server"], {
     cwd,
@@ -61,7 +64,23 @@ export async function* appServerTurn(
         ) {
           let output = "ツールを実行できませんでした。";
           let success = false;
-          if (messageHistory && params.tool === MESSAGE_HISTORY_TOOL.name) {
+          if (
+            discordAttachmentDownload &&
+            params.tool === DISCORD_ATTACHMENT_TOOL.name
+          ) {
+            try {
+              output = await discordAttachmentDownload(params.arguments);
+              success = true;
+            } catch (error) {
+              output =
+                error instanceof RangeError
+                  ? error.message
+                  : "Discord のメッセージまたは添付ファイルを取得できませんでした。";
+            }
+          } else if (
+            messageHistory &&
+            params.tool === MESSAGE_HISTORY_TOOL.name
+          ) {
             try {
               output = await messageHistory(params.arguments);
               success = true;
@@ -160,10 +179,14 @@ export async function* appServerTurn(
           sandbox: approve ? "workspace-write" : "read-only",
           approvalPolicy: approve ? "on-request" : "never",
           approvalsReviewer: approve ? approvalsReviewer : "user",
-          ...((protectedFetch || messageHistory) && !threadId
+          ...((protectedFetch || messageHistory || discordAttachmentDownload) &&
+          !threadId
             ? {
                 dynamicTools: [
                   ...(messageHistory ? [MESSAGE_HISTORY_TOOL] : []),
+                  ...(discordAttachmentDownload
+                    ? [DISCORD_ATTACHMENT_TOOL]
+                    : []),
                   ...(protectedFetch
                     ? [
                         {

@@ -7,6 +7,7 @@ import {
   Partials,
 } from "discord.js";
 import { createCodexInput } from "./attachmentUtils.js";
+import { createDiscordAttachmentTool } from "./discordAttachmentTool.js";
 import { loadConfig } from "./config.js";
 import {
   buildHelpMessage,
@@ -186,9 +187,10 @@ async function main(): Promise<void> {
     const mentionsBot = message.mentions.users.has(client.user.id);
     if (!mentionsBot) return;
 
+    // Dynamic tools are registered at thread creation.
     const sessionKey = protectedFetchEnabled
-      ? `message-history:protected-fetch:${message.channelId}`
-      : `message-history:${message.channelId}`;
+      ? `message-history-attachments:protected-fetch:${message.channelId}`
+      : `message-history-attachments:${message.channelId}`;
 
     if (!config.allowedDiscordUserIds.has(message.author.id)) {
       await message.reply("この Bot の利用は許可ユーザーに限定されています。");
@@ -384,6 +386,7 @@ async function main(): Promise<void> {
       message.reply(content),
     );
     let cleanupAttachments: (() => Promise<void>) | null = null;
+    const attachmentTool = createDiscordAttachmentTool(message);
 
     try {
       const recentContext = await fetchRecentContext(message);
@@ -412,6 +415,7 @@ async function main(): Promise<void> {
           requestedAt: startedAt,
           approve: readOnly ? undefined : approve,
           messageHistory: createMessageHistory(message),
+          discordAttachmentDownload: attachmentTool.call,
           protectedFetch: protectedFetchEnabled
             ? async (url) => {
                 const requestedUrls =
@@ -529,10 +533,15 @@ async function main(): Promise<void> {
         await message.reply(errorMessage);
       }
     } finally {
-      if (cleanupAttachments) {
-        await cleanupAttachments();
-      }
       stopTyping();
+      await Promise.all([
+        cleanupAttachments?.(),
+        attachmentTool.cleanup(),
+      ]).catch((error: unknown) => {
+        logger.warn("Failed to clean up Discord attachments", {
+          error: String(error),
+        });
+      });
     }
   });
 
